@@ -47,7 +47,7 @@ DB_PATH = os.environ.get("BRUIN_DUCKDB_PATH", "us_pipeline.duckdb")
 TARGET_COMMUNITIES = [0, 1, 2]
 
 
-# ── Johnson Nestedness Calculator (self-contained) ──
+# Johnson Nestedness Calculator (self-contained)
 class JohnsonNestednessCalculator:
     """
     Johnson et al. (2013) nestedness for binary adjacency / biadjacency matrices.
