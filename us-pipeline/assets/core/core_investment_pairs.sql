@@ -9,7 +9,7 @@ depends:
   - core.vc_investments
 
 description: |
-  Create investment pairs: late-stage (left/set 0) ↔ early-stage (right/set 1).
+  Create investment pairs: late-stage (left/set 0) <=> early-stage (right/set 1).
   This forms the edge list for the bipartite syndication network.
   
   Early stages: angel, pre_seed, seed, series_a
