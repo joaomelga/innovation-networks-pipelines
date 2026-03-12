@@ -4,7 +4,7 @@ A data engineering project that builds reproducible pipelines for analyzing vent
 
 ## Motivation
 
-This repository explores the intersection of **academic research** and **modern data engineering practices**. It reimplements the data processing and network analysis workflows from my master's thesis — originally developed as exploratory Jupyter notebooks — into structured, production-style data pipelines using [Bruin](https://github.com/bruin-data/bruin).
+This repository explores the intersection of **academic research** and **modern data engineering practices**. It reimplements the data processing and network analysis workflows from my master's thesis — originally developed as exploratory Jupyter notebooks in the [innovation-networks-exploration](https://github.com/joaomelga/innovation-networks-exploration) project — into structured, production-style data pipelines using [Bruin](https://github.com/bruin-data/bruin).
 
 The skills and tools applied here were largely acquired through the [Data Engineering Zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp), where I gained hands-on experience with pipeline orchestration, data warehousing, and analytics engineering (see my [zoomcamp homework repo](https://github.com/joaomelga/data-eng-zoomcamp-hw-2026) for details).
 
@@ -34,7 +34,7 @@ The skills and tools applied here were largely acquired through the [Data Engine
 └── references/          # Supporting papers
 ```
 
-See the [us-pipeline README](us-pipeline/README.md) for detailed pipeline architecture, DAG, and run instructions.
+See the [us-pipeline README](us-pipeline/README.md) for detailed pipeline architecture, DAG (Directed Acyclic Graph), and run instructions.
 
 ## Quick Start
 
