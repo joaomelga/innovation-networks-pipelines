@@ -29,7 +29,8 @@ experiments/
       └─ exp_johnson_nestedness.py  (Johnson 2013 nestedness per community)
 
 reports/
-  └─ report_johnson_nestedness.py   (scatter plots: local nestedness vs degree)
+  ├─ report_johnson_nestedness.py   (scatter plots: local nestedness vs degree)
+  └─ 0_Home.py              (interactive dashboards)
 ```
 
 ## DAG (Directed Acyclic Graph)
@@ -38,35 +39,59 @@ reports/
 
 ## How to Run
 
+> For prerequisites (uv, Bruin CLI), see the [root README](../README.md#prerequisites).
+
 ```bash
-# From the bruin/ directory:
+# Install Python dependencies (from the us-pipeline directory)
+cd us-pipeline
+uv sync
+cd ..
 
 # Validate the pipeline
 bruin validate us-pipeline
 
 # Run the full pipeline
-bruin run us-pipeline
+bruin run us-pipeline --workers 1
 
 # Run a specific asset (with its upstream dependencies)
-bruin run us-pipeline/assets/reports/report_johnson_nestedness.py
+bruin run us-pipeline/assets/reports/report_johnson_nestedness.py --workers 1
 
 # Run only the experiment
-bruin run us-pipeline/assets/experiments/johnson/exp_johnson_nestedness.py
+bruin run us-pipeline/assets/experiments/johnson/exp_johnson_nestedness.py --workers 1
 ```
 
 ## Outputs
 
-- **DuckDB tables**: All intermediate and final tables stored in `us-pipeline/us_pipeline.duckdb`
+- **DuckDB tables**: All intermediate and final tables stored in `us_pipeline.duckdb`
   - `raw.*` — raw loaded data
   - `staging.*` — cleaned data
   - `core.*` — VC investments and investment pairs
   - `graph.network` — nodes with community assignments (equivalent to `nodes.csv`)
   - `graph.edges` — edges with community info (equivalent to `edges.csv`)
   - `experiment.johnson_nestedness` — local nestedness metrics per node
-- **Figures**: `us-pipeline/outputs/figures/johnson_nestedness/`
+- **Figures**: `outputs/figures/johnson_nestedness/`
   - `johnson_nestedness_vs_degree.png` — scatter plot
   - `johnson_gnorm_comparison.png` — bar chart comparing communities
   - `johnson_summary.csv` — global metrics per community
+
+## Dashboards
+
+Interactive Streamlit dashboards are available to explore the pipeline data and results. Make sure the pipeline has been run at least once so the DuckDB database is populated.
+
+```bash
+# From the repo root
+uv run --project us-pipeline streamlit run us-pipeline/assets/reports/0_Home.py
+```
+
+### Available Pages
+
+| Page | Description |
+|------|-------------|
+| **Home** | Pipeline overview with DAG diagram, key metrics, and nestedness headline |
+| **Pipeline Funnel** | Record counts at each stage, filtering breakdowns, temporal coverage |
+| **Data Explorer** | Geographic maps, top investors, sector analysis, funding distributions |
+| **Community Explorer** | Community sizes, composition, interactive network visualization, degree distributions |
+| **Nestedness Analysis** | Interactive Johnson nestedness charts, degree vs local g_norm scatter, asymmetry analysis, correlation statistics |
 
 ## Data Source
 

@@ -15,6 +15,7 @@ The skills and tools applied here were largely acquired through the [Data Engine
 - **Nestedness analysis** using the Johnson et al. (2013) methodology
 - **DuckDB** as local analytical warehouse
 - **Automated reports** with scatter plots and correlation analysis
+- **Interactive Streamlit dashboards** for exploring pipeline data, communities, and nestedness results
 
 ## Project Structure
 
@@ -30,21 +31,40 @@ The skills and tools applied here were largely acquired through the [Data Engine
 │       ├── core/        # Analytical datasets
 │       ├── graph/       # Network construction & community detection
 │       ├── experiments/ # Nestedness calculations
-│       └── reports/     # Visualizations & correlation analysis
+│       └── reports/     # Visualizations, analysis & dashboards
 └── references/          # Supporting papers
 ```
 
-See the [us-pipeline README](us-pipeline/README.md) for detailed pipeline architecture, DAG (Directed Acyclic Graph), and run instructions.
+See the [us-pipeline README](us-pipeline/README.md) for detailed pipeline architecture, DAG, and run instructions.
+
+## Prerequisites
+
+### uv (Python package manager)
+
+This project uses [uv](https://docs.astral.sh/uv/) to manage Python dependencies. Install it by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Bruin CLI
+
+Install the [Bruin CLI](https://github.com/bruin-data/bruin) to run the data pipeline.
 
 ## Quick Start
 
-```bash
-# Validate the pipeline
-bruin validate us-pipeline
+For *quick start* instructions, **us-pipeline** is used as example below:
 
-# Run (use --workers 1 on Windows to avoid DuckDB file lock issues)
+```bash
+# 1. Install Python dependencies
+cd us-pipeline
+uv sync
+cd ..
+
+# 2. Run the pipeline (use --workers 1 on Windows to avoid DuckDB file lock issues)
 bruin run us-pipeline --workers 1
+
+# 3. Launch the interactive dashboards
+uv run --project us-pipeline streamlit run us-pipeline/assets/reports/0_Home.py
 ```
+
+See the [us-pipeline README](us-pipeline/README.md) for more run options and details on the [available dashboards](us-pipeline/README.md#dashboards).
 
 ## References
 
