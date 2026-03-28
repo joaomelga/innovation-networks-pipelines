@@ -12,5 +12,6 @@ dependencies = [
     "duckdb>=1.0.0",
     "tqdm>=4.65.0",
     "streamlit>=1.55.0",
+    "plotly>=5.18.0",
     "statsmodels>=0.14.6",
 ]
