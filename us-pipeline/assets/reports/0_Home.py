@@ -1,4 +1,4 @@
-"""Home page — Pipeline Overview for US VC Syndication Networks."""
+"""Home page - Pipeline Overview for US VC Syndication Networks."""
 
 import streamlit as st
 from db import query_df, format_number
@@ -11,7 +11,7 @@ st.set_page_config(
 
 st.title("US VC Syndication Networks Pipeline")
 st.markdown(
-    "Interactive dashboards for the **Staged Bipartite Venture Networks** analysis — "
+    "Interactive dashboards for the **Staged Bipartite Venture Networks** analysis - "
     "exploring nestedness and community structure in US venture capital syndication networks."
 )
 
@@ -121,7 +121,7 @@ col7.metric("Graph Edges", format_number(counts["graph.edges"]))
 col8.metric("Communities Detected", n_communities)
 
 # Nestedness Headline
-st.subheader("Johnson Nestedness — Top Communities")
+st.subheader("Johnson Nestedness - Top Communities")
 
 nestedness_df = query_df(
     """
