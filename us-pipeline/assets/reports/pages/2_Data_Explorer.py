@@ -260,13 +260,16 @@ top_syndicated = query_df(
     """
     SELECT
         ip.org_uuid,
+        vc.company_name,
         COUNT(*) AS pairs
     FROM core.investment_pairs ip
-    GROUP BY ip.org_uuid
+    JOIN (SELECT DISTINCT org_uuid, company_name FROM core.vc_investments) vc
+        ON ip.org_uuid = vc.org_uuid
+    GROUP BY ip.org_uuid, vc.company_name
     ORDER BY pairs DESC
-    LIMIT 20
+    LIMIT 100
     """
 )
 
-st.markdown("**Top 20 Companies by Syndication Pairs**")
+st.markdown("**Top 100 Companies by Syndication Pairs**")
 st.dataframe(top_syndicated, use_container_width=True, hide_index=True)
