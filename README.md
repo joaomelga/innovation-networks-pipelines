@@ -1,75 +1,125 @@
 # Innovation Networks Pipelines
 
-A data engineering project that builds reproducible pipelines for analyzing venture capital syndication networks, applying the methodology from my research on nested investor syndication structures (Melga, 2025).
+A multi-country, multi-method, experiment-driven research platform for analyzing structural properties of innovation networks — investor syndication, enterprise co-investment, and beyond. Built around reproducible [Bruin](https://github.com/bruin-data/bruin) pipelines and interactive Streamlit dashboards, it supports adding new countries, datasets, and network analysis methods incrementally.
 
 ## Motivation
 
-This repository explores the intersection of **academic research** and **modern data engineering practices**. It reimplements the data processing and network analysis workflows from my master's thesis — originally developed as exploratory Jupyter notebooks in the [innovation-networks-exploration](https://github.com/joaomelga/innovation-networks-exploration) project — into structured, production-style data pipelines using [Bruin](https://github.com/bruin-data/bruin).
-
-The skills and tools applied here were largely acquired through the [Data Engineering Zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp), where I gained hands-on experience with pipeline orchestration, data warehousing, and analytics engineering (see my [zoomcamp homework repo](https://github.com/joaomelga/data-eng-zoomcamp-hw-2026) for details).
+This repository bridges **academic research** and **production-grade data engineering**. It reimplements the data processing and network analysis workflows originally developed as exploratory Jupyter notebooks in the [innovation-networks-exploration](https://github.com/joaomelga/innovation-networks-exploration) project into structured, reproducible pipelines — making experiments comparable, extensible, and shareable.
 
 ## What's Inside
 
 - **Bruin pipelines** for ingesting, cleaning, and transforming Crunchbase venture capital data
-- **Graph construction** of bipartite investor syndication networks with community detection
+- **Graph construction** of bipartite investor syndication networks with pluggable community detection
 - **Nestedness analysis** using the Johnson et al. (2013) methodology
-- **DuckDB** as local analytical warehouse
-- **Automated reports** with scatter plots and correlation analysis
+- **NESTLON algorithm** (Grimm & Tessone, 2017) for nestedness-aware community detection
+- **DuckDB** as local analytical warehouse (one per experiment)
 - **Interactive Streamlit dashboards** for exploring pipeline data, communities, and nestedness results
 
 ## Project Structure
 
 ```
-├── .bruin.yml           # Bruin project configuration (DuckDB connection)
-├── us-pipeline/         # Main pipeline for US venture capital data
-│   ├── pipeline.yml
-│   ├── pyproject.toml   # Python dependencies (managed by uv)
-│   ├── data/            # Raw data (CSV/CSV.GZ, not tracked in git)
-│   └── assets/          # Pipeline assets organized by layer
-│       ├── raw/         # Data ingestion (CSV → DuckDB)
-│       ├── staging/     # Data cleaning & filtering
-│       ├── core/        # Analytical datasets
-│       ├── graph/       # Network construction & community detection
-│       ├── experiments/ # Nestedness calculations
-│       └── reports/     # Visualizations, analysis & dashboards
-└── references/          # Supporting papers
+innovation-networks-pipelines/
+├── .bruin.yml               # Bruin project configuration
+├── lib/                     # Shared Python library
+│   ├── graph/               # Graph construction, clustering methods (modularity, NESTLON)
+│   ├── nestedness/          # Nestedness calculators (Johnson JDM-NODF)
+│   └── utils/               # DuckDB helpers, bipartite matrix utilities
+├── data/                    # Shared raw data (CSV.GZ, git-lfs tracked)
+│   ├── us/                  # US Crunchbase data
+│   └── fr/                  # France Crunchbase data
+├── experiments/             # Bruin experiment pipelines (raw → reports)
+│   └── us-modularity/       # US data + greedy modularity community detection
+│       ├── pipeline.yml
+│       ├── config.yml       # country: us, clustering_method: modularity
+│       └── assets/          # raw/ staging/ core/ graph/ experiments/ reports/
+└── dashboard/               # Streamlit multi-experiment dashboard
+    ├── 0_Home.py
+    └── pages/
 ```
 
-See the [us-pipeline README](us-pipeline/README.md) for detailed pipeline architecture, DAG, and run instructions.
+Each experiment is a **self-contained Bruin pipeline** with its own DuckDB. Adding a new experiment (country or clustering method) means adding a new directory under `experiments/` with a different `config.yml`.
 
 ## Prerequisites
 
 ### uv (Python package manager)
 
-This project uses [uv](https://docs.astral.sh/uv/) to manage Python dependencies. Install it by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+This project uses [uv](https://docs.astral.sh/uv/) to manage Python dependencies per directory. Install it by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### Bruin CLI
 
-Install the [Bruin CLI](https://github.com/bruin-data/bruin) to run the data pipeline.
+Install the [Bruin CLI](https://github.com/bruin-data/bruin) to run the data pipelines.
 
 ## Quick Start
 
-For *quick start* instructions, **us-pipeline** is used as example below:
+### 1. Run the us-modularity experiment
 
 ```bash
-# 1. Install Python dependencies
-cd us-pipeline
+# Install Python dependencies
+cd experiments/us-modularity
 uv sync
-cd ..
+cd ../..
 
-# 2. Run the pipeline (use --workers 1 on Windows to avoid DuckDB file lock issues)
-bruin run us-pipeline --workers 1
+# Validate pipeline assets
+bruin validate experiments/us-modularity
 
-# 3. Launch the interactive dashboards
-uv run --project us-pipeline streamlit run us-pipeline/assets/reports/0_Home.py
+# Run the full pipeline (use --workers 1 on Windows to avoid DuckDB lock issues)
+bruin run experiments/us-modularity --workers 1
 ```
 
-See the [us-pipeline README](us-pipeline/README.md) for more run options and details on the [available dashboards](us-pipeline/README.md#dashboards).
+The pipeline runs in layer order: `raw` → `staging` → `core` → `graph` → `experiments` → `reports`.
+
+To run a single asset or a specific layer:
+```bash
+# Run from a specific asset onward
+bruin run experiments/us-modularity --downstream experiments/us-modularity/assets/graph/graph_nodes.py
+
+# Run a single asset
+bruin run experiments/us-modularity/assets/experiments/johnson/exp_johnson_nestedness.py
+```
+
+### 2. Launch the Streamlit dashboard
+
+```bash
+cd dashboard
+uv sync
+uv run streamlit run 0_Home.py
+```
+
+The dashboard auto-discovers any experiment with a populated DuckDB file. Use the **Experiment** selector in the sidebar to switch between experiments. Pages available:
+
+| Page | Description |
+|---|---|
+| Home | Pipeline overview, key metrics, nestedness summary |
+| Pipeline Funnel | Record counts at each layer, filter breakdowns |
+| Data Explorer | Geography, sectors, funding distributions, temporal trends |
+| Community Explorer | Community structure, bipartite composition, network visualization |
+| Nestedness Analysis | Johnson g_norm charts, degree vs nestedness scatter, asymmetry analysis |
+
+## Adding a New Experiment
+
+To add a new country or clustering method:
+
+1. Create `experiments/<name>/` with a `pipeline.yml`, `config.yml`, `pyproject.toml`, and `assets/`
+2. Set `clustering_method` in `config.yml` to `modularity` or `nestlon`
+3. Add a DuckDB connection entry to `.bruin.yml`
+4. Run with `bruin run experiments/<name> --workers 1`
+
+The dashboard will automatically pick up the new experiment's DuckDB file.
+
+## Clustering Methods
+
+Methods are registered in `lib/graph/` and selected via `config.yml`:
+
+| Method | `config.yml` value | Description |
+|---|---|---|
+| Greedy modularity | `modularity` | Optimizes modularity Q (Newman) |
+| NESTLON | `nestlon` | Detects nested components via local neighborhood containment (Grimm & Tessone, 2017) |
 
 ## References
 
-- Melga, J. (2025). *Nested Investor Syndication Networks*. Master's thesis.
+- Melga, J., Leroy, B., & Dalle, J.-M. (2026). *Staged Bipartite Venture Networks: Preliminary evidence of asymmetric nestedness in the Silicon Valley*. Extended abstract.
 - Johnson, S., Domínguez-García, V., & Muñoz, M. A. (2013). Factors determining nestedness in complex networks. *PLoS ONE*, 8(9).
+- Grimm, A., & Tessone, C. J. (2017). Analysing the sensitivity of nestedness detection methods. *Applied Network Science*, 2, 21.
 
 ## Author
 
