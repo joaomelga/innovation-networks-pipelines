@@ -3,7 +3,5 @@ environments:
     default:
         connections:
             duckdb:
-                - name: duckdb-default
-                  path: us-pipeline/us_pipeline.duckdb
                 - name: duckdb-us-modularity
                   path: experiments/us-modularity/us_modularity.duckdb
