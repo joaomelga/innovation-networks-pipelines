@@ -5,3 +5,5 @@ environments:
             duckdb:
                 - name: duckdb-us-modularity
                   path: experiments/us-modularity/us_modularity.duckdb
+                - name: duckdb-us-nestlon
+                  path: experiments/us-nestlon/us_nestlon.duckdb
