@@ -2,6 +2,34 @@
 
 A multi-country, multi-method, experiment-driven research platform for analyzing structural properties of innovation networks — investor syndication, enterprise co-investment, and beyond. Built around reproducible [Bruin](https://github.com/bruin-data/bruin) pipelines and interactive Streamlit dashboards, it supports adding new countries, datasets, and network analysis methods incrementally.
 
+## Contents
+
+- [Dashboard](#dashboard)
+- [Motivation](#motivation)
+- [What's Inside](#whats-inside)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Adding a New Experiment](#adding-a-new-experiment)
+- [Clustering Methods](#clustering-methods)
+- [References](#references)
+
+## Dashboard
+
+The interactive dashboard lets you explore any experiment without writing code — switch between pipeline layers, inspect community structure, and visualize nestedness results in real time.
+
+> **Live app:** [innovation-networks-pipelines.streamlit.app](https://innovation-networks-pipelines.streamlit.app/)
+
+![Dashboard home page showing pipeline overview and key metrics](docs/images/dashboard-home.png)
+
+Community Explorer lets you navigate detected communities, inspect their bipartite composition, and render the network graph interactively.
+
+![Demo: exploring communities in the dashboard](docs/images/demo-explore-communities.gif)
+
+Nestedness Analysis surfaces Johnson g_norm charts, degree-vs-nestedness scatter plots, and asymmetry breakdowns across all investor roles.
+
+![Demo: analysing nestedness in the dashboard](docs/images/demo-analyse-nestedness.gif)
+
 ## Motivation
 
 This repository bridges **academic research** and **production-grade data engineering**. It reimplements the data processing and network analysis workflows originally developed as exploratory Jupyter notebooks in the [innovation-networks-exploration](https://github.com/joaomelga/innovation-networks-exploration) project into structured, reproducible pipelines — making experiments comparable, extensible, and shareable.
