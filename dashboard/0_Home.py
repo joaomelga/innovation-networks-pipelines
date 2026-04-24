@@ -1,5 +1,7 @@
 """Home page - Pipeline Overview for VC Syndication Networks."""
 
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -79,14 +81,15 @@ st.subheader("Experiments Overview")
 _all_exps = discover_experiments()
 _exp_cols = st.columns(max(len(_all_exps), 1))
 for _col, (_exp_name, _db_path) in zip(_exp_cols, _all_exps.items()):
-    # Parse clustering_method from config.yml without an external YAML dependency
-    _config_path = _db_path.parent / "config.yml"
+    # Parse clustering_method from config.yml (local mode only; not available in HF mode)
     _method = "unknown"
-    if _config_path.exists():
-        for _line in _config_path.read_text().splitlines():
-            if _line.startswith("clustering_method"):
-                _method = _line.split(":", 1)[-1].strip()
-                break
+    if not str(_db_path).startswith("hf://"):
+        _config_path = Path(_db_path).parent / "config.yml"
+        if _config_path.exists():
+            for _line in _config_path.read_text().splitlines():
+                if _line.startswith("clustering_method"):
+                    _method = _line.split(":", 1)[-1].strip()
+                    break
     _info = _METHOD_INFO.get(_method, {"icon": "⚙️", "name": _method, "description": "No description available."})
     _is_active = _exp_name == selected
     with _col:
