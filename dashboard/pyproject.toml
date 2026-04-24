@@ -10,4 +10,5 @@ dependencies = [
     "duckdb>=1.0.0",
     "networkx>=3.0",
     "scipy>=1.10.0",
+    "huggingface-hub>=1.12.0",
 ]

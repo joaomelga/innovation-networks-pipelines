@@ -1,5 +1,6 @@
 """Shared DuckDB connection and query utilities for Streamlit dashboards."""
 
+import os
 from pathlib import Path
 
 import duckdb
@@ -15,22 +16,60 @@ SET_1_COLOR = "#e74c3c"
 SET_COLORS = {0: SET_0_COLOR, 1: SET_1_COLOR}
 SET_LABELS = {0: "Late-stage (Set 0)", 1: "Early-stage (Set 1)"}
 
+# Tables exported to HF Datasets as {experiment}/{schema}_{table}.parquet
+HF_TABLES = [
+    ("raw", "companies"),
+    ("raw", "investors"),
+    ("raw", "investments"),
+    ("raw", "funding_rounds"),
+    ("staging", "companies_clean"),
+    ("staging", "investments_clean"),
+    ("staging", "investments_funded"),
+    ("core", "vc_investments"),
+    ("core", "investment_pairs"),
+    ("graph", "network"),
+    ("graph", "edges"),
+    ("experiment", "johnson_nestedness"),
+]
 
-def discover_experiments() -> dict[str, Path]:
-    """Scan experiments/ for directories containing a DuckDB file.
 
-    Returns a dict mapping experiment name -> DuckDB file path.
+def _hf_repo() -> str | None:
+    """Return the HuggingFace dataset repo ID if HF mode is active."""
+    return os.environ.get("HF_DATASET_REPO")
+
+
+def discover_experiments() -> dict[str, str]:
+    """Return a dict mapping experiment name -> DuckDB path or HF sentinel path.
+
+    In HF mode, values are "hf://{name}" strings. In local mode, values are
+    absolute paths to .duckdb files.
     """
+    repo = _hf_repo()
+    if repo:
+        return _discover_experiments_hf(repo)
+    return _discover_experiments_local()
+
+
+def _discover_experiments_local() -> dict[str, Path]:
     experiments = {}
     if not EXPERIMENTS_DIR.exists():
         return experiments
     for exp_dir in sorted(EXPERIMENTS_DIR.iterdir()):
         if not exp_dir.is_dir():
             continue
-        # Look for any .duckdb file in the experiment directory
         duckdb_files = list(exp_dir.glob("*.duckdb"))
         if duckdb_files:
             experiments[exp_dir.name] = duckdb_files[0]
+    return experiments
+
+
+def _discover_experiments_hf(repo: str) -> dict[str, str]:
+    from huggingface_hub import list_repo_tree, RepoFolder
+
+    experiments = {}
+    for item in list_repo_tree(repo, repo_type="dataset"):
+        if isinstance(item, RepoFolder) and "/" not in item.path:
+            experiments[item.path] = f"hf://{item.path}"
     return experiments
 
 
@@ -40,7 +79,7 @@ def get_selected_experiment() -> str | None:
 
 
 def get_db_path() -> str | None:
-    """Return the DuckDB file path for the currently selected experiment."""
+    """Return the DuckDB path (or HF sentinel) for the currently selected experiment."""
     exp_name = get_selected_experiment()
     if not exp_name:
         return None
@@ -50,10 +89,7 @@ def get_db_path() -> str | None:
 
 
 def experiment_selector(sidebar: bool = True) -> str | None:
-    """Render an experiment selector widget. Returns selected experiment name.
-
-    Call this at the top of each page to ensure the experiment is selected.
-    """
+    """Render an experiment selector widget. Returns selected experiment name."""
     experiments = discover_experiments()
     if not experiments:
         st.warning("No experiments found. Run a pipeline first.")
@@ -69,9 +105,32 @@ def experiment_selector(sidebar: bool = True) -> str | None:
     return selected
 
 
+def _setup_hf_views(conn: duckdb.DuckDBPyConnection, experiment: str, hf_repo: str) -> None:
+    """Create schema+view aliases in an in-memory connection pointing to HF Parquet files."""
+    conn.execute("INSTALL httpfs; LOAD httpfs;")
+    base = f"https://huggingface.co/datasets/{hf_repo}/resolve/main/{experiment}"
+    for schema, table in HF_TABLES:
+        url = f"{base}/{schema}_{table}.parquet"
+        conn.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+        conn.execute(
+            f"CREATE VIEW IF NOT EXISTS {schema}.{table} AS "
+            f"SELECT * FROM read_parquet('{url}')"
+        )
+
+
 @st.cache_resource
-def get_connection(db_path: str):
-    """Return a read-only DuckDB connection (cached per path)."""
+def get_connection(db_path: str) -> duckdb.DuckDBPyConnection:
+    """Return a DuckDB connection cached per path/experiment.
+
+    In HF mode (db_path starts with "hf://"), returns an in-memory connection
+    with views pointing to Parquet files on HuggingFace. In local mode, returns
+    a read-only connection to the .duckdb file.
+    """
+    if db_path.startswith("hf://"):
+        experiment = db_path[len("hf://"):]
+        conn = duckdb.connect()
+        _setup_hf_views(conn, experiment, _hf_repo())
+        return conn
     return duckdb.connect(db_path, read_only=True)
 
 
@@ -85,8 +144,7 @@ def _query_df_cached(sql: str, db_path: str) -> pd.DataFrame:
 def query_df(sql: str) -> pd.DataFrame:
     """Execute SQL against the currently selected experiment's DuckDB.
 
-    Resolves the active experiment path before hitting the cache, so switching
-    experiments always queries the correct database.
+    Works in both local and HF mode — callers use schema.table SQL unchanged.
     """
     path = get_db_path()
     if not path:
@@ -95,7 +153,7 @@ def query_df(sql: str) -> pd.DataFrame:
 
 
 def query_df_by_experiment(sql: str, exp_name: str) -> pd.DataFrame:
-    """Execute SQL against a specific experiment's DuckDB by name, bypassing session state."""
+    """Execute SQL against a specific experiment by name, bypassing session state."""
     experiments = discover_experiments()
     db_path = experiments.get(exp_name)
     if not db_path:
