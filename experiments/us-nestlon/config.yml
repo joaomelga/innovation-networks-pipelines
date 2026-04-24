@@ -1,0 +1,4 @@
+country: us
+clustering_method: nestlon
+target_communities: [0, 1, 2]
+data_dir: ../../data/us

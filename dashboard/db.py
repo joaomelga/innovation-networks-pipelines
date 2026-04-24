@@ -76,17 +76,22 @@ def get_connection(db_path: str):
 
 
 @st.cache_data(ttl=600)
-def query_df(sql: str, _db_path: str | None = None) -> pd.DataFrame:
-    """Execute SQL and return a pandas DataFrame (cached for 10 min).
+def _query_df_cached(sql: str, db_path: str) -> pd.DataFrame:
+    """Cached query execution. Both arguments are part of the cache key."""
+    con = get_connection(db_path)
+    return con.execute(sql).fetchdf()
 
-    Uses the currently selected experiment's DuckDB unless _db_path is given.
-    The _db_path parameter is prefixed with _ so Streamlit doesn't hash it.
+
+def query_df(sql: str) -> pd.DataFrame:
+    """Execute SQL against the currently selected experiment's DuckDB.
+
+    Resolves the active experiment path before hitting the cache, so switching
+    experiments always queries the correct database.
     """
-    path = _db_path or get_db_path()
+    path = get_db_path()
     if not path:
         return pd.DataFrame()
-    con = get_connection(path)
-    return con.execute(sql).fetchdf()
+    return _query_df_cached(sql, path)
 
 
 def format_number(n: int | float) -> str:
