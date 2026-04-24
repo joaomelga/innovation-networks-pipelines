@@ -52,6 +52,14 @@ comm_stats["edges"] = comm_stats["edges"].fillna(0).astype(int)
 comm_stats = comm_stats.drop(columns=["community"], errors="ignore")
 
 # =============================================================================
+# Sidebar Filters
+# =============================================================================
+st.sidebar.header("Filters")
+
+available_comms = sorted(comm_stats["community_id"].tolist())
+selected_comm = st.sidebar.selectbox("Select Community", available_comms, index=0)
+
+# =============================================================================
 # 1. Community Size Distribution
 # =============================================================================
 st.subheader("Community Size Distribution")
@@ -142,9 +150,6 @@ st.plotly_chart(fig_balance, use_container_width=True)
 # 4. Community Detail Panel
 # =============================================================================
 st.subheader("Community Detail")
-
-available_comms = sorted(comm_stats["community_id"].tolist())
-selected_comm = st.selectbox("Select Community", available_comms, index=0)
 
 comm_nodes = network_df[network_df["community_id"] == selected_comm]
 comm_edges = edges_df[
