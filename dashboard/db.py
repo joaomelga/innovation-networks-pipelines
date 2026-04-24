@@ -94,6 +94,15 @@ def query_df(sql: str) -> pd.DataFrame:
     return _query_df_cached(sql, path)
 
 
+def query_df_by_experiment(sql: str, exp_name: str) -> pd.DataFrame:
+    """Execute SQL against a specific experiment's DuckDB by name, bypassing session state."""
+    experiments = discover_experiments()
+    db_path = experiments.get(exp_name)
+    if not db_path:
+        return pd.DataFrame()
+    return _query_df_cached(sql, str(db_path))
+
+
 def format_number(n: int | float) -> str:
     """Format large numbers with K/M suffixes."""
     if n >= 1_000_000:
