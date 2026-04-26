@@ -29,6 +29,35 @@ st.markdown(
 df = query_df("SELECT * FROM experiment.johnson_nestedness")
 communities = sorted(df["community"].unique())
 
+_GEO_SQL = """
+WITH investor_geo AS (
+    SELECT Source AS node, ANY_VALUE(investor_country_left) AS country, ANY_VALUE(investor_region_left) AS region
+    FROM graph.edges
+    GROUP BY Source
+    UNION ALL
+    SELECT Target AS node, ANY_VALUE(investor_country_right) AS country, ANY_VALUE(investor_region_right) AS region
+    FROM graph.edges
+    GROUP BY Target
+),
+deduped AS (
+    SELECT node, ANY_VALUE(country) AS country, ANY_VALUE(region) AS region
+    FROM investor_geo
+    GROUP BY node
+)
+SELECT
+    n.community,
+    n.set,
+    d.country,
+    d.region,
+    COUNT(DISTINCT n.node) AS node_count
+FROM experiment.johnson_nestedness n
+JOIN deduped d ON n.node = d.node
+WHERE d.country IS NOT NULL
+GROUP BY n.community, n.set, d.country, d.region
+ORDER BY n.community, node_count DESC
+"""
+geo_df = query_df(_GEO_SQL)
+
 # Sidebar filters
 st.sidebar.header("Filters")
 selected_communities = st.sidebar.multiselect(
@@ -42,6 +71,7 @@ degree_range = st.sidebar.slider(
     (int(df["degree"].min()), int(df["degree"].max())),
 )
 log_y = st.sidebar.checkbox("Log scale (y-axis)", value=False)
+top_n = st.sidebar.slider("Top N countries / Regions", 5, 30, 10)
 
 # Apply filters
 mask = (
@@ -223,7 +253,89 @@ fig_asym.update_layout(height=400)
 st.plotly_chart(fig_asym, use_container_width=True)
 
 # =============================================================================
-# 5. Correlation Statistics
+# 5. Geographic Distribution
+# =============================================================================
+st.subheader("Geographic Distribution of Community Nodes")
+
+if not geo_df.empty:
+    # Apply filters
+    geo_mask = geo_df["community"].isin(selected_communities)
+    if set_filter == "Late-stage (Set 0)":
+        geo_mask &= geo_df["set"] == 0
+    elif set_filter == "Early-stage (Set 1)":
+        geo_mask &= geo_df["set"] == 1
+    geo_filtered = geo_df[geo_mask]
+
+    geo_col1, geo_col2 = st.columns([1, 1])
+
+    with geo_col1:
+        st.markdown("**Top Countries**")
+        country_agg = (
+            geo_filtered.groupby(["community", "country"])["node_count"]
+            .sum()
+            .reset_index()
+        )
+        top_countries = (
+            country_agg.groupby("country")["node_count"]
+            .sum()
+            .nlargest(top_n)
+            .index
+        )
+        country_plot = country_agg[country_agg["country"].isin(top_countries)].copy()
+        country_plot["country"] = pd.Categorical(
+            country_plot["country"],
+            categories=top_countries[::-1],
+            ordered=True,
+        )
+        country_plot = country_plot.sort_values("country")
+        fig_country = px.bar(
+            country_plot,
+            x="node_count",
+            y="country",
+            color="community",
+            orientation="h",
+            barmode="group",
+            labels={"node_count": "Node Count", "country": "Country"},
+        )
+        fig_country.update_layout(height=max(300, top_n * 28), yaxis_title="")
+        st.plotly_chart(fig_country, use_container_width=True)
+
+    with geo_col2:
+        st.markdown("**Regions**")
+        region_agg = (
+            geo_filtered.groupby(["community", "region"])["node_count"]
+            .sum()
+            .reset_index()
+        )
+        top_regions = (
+            region_agg.groupby("region")["node_count"]
+            .sum()
+            .sort_values(ascending=False)
+            .nlargest(top_n)
+            .index
+        )
+        region_agg["region"] = pd.Categorical(
+            region_agg["region"],
+            categories=top_regions[::-1],
+            ordered=True,
+        )
+        region_agg = region_agg.sort_values("region")
+        fig_region = px.bar(
+            region_agg,
+            x="node_count",
+            y="region",
+            color="community",
+            orientation="h",
+            barmode="group",
+            labels={"node_count": "Node Count", "region": "Region"},
+        )
+        fig_region.update_layout(height=max(300, len(top_regions) * 28), yaxis_title="")
+        st.plotly_chart(fig_region, use_container_width=True)
+else:
+    st.info("Geographic data not available for this experiment.")
+
+# =============================================================================
+# 6. Correlation Statistics
 # =============================================================================
 # st.subheader("Correlation: Degree vs Local Nestedness")
 
@@ -266,7 +378,7 @@ st.plotly_chart(fig_asym, use_container_width=True)
 #     st.dataframe(corr_df, use_container_width=True, hide_index=True)
 
 # =============================================================================
-# 6. Node-Level Data Table
+# 7. Node-Level Data Table
 # =============================================================================
 st.subheader("Node-Level Data")
 
