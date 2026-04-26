@@ -45,6 +45,7 @@ inv_types = query_df(
     "SELECT DISTINCT investment_type FROM core.vc_investments ORDER BY investment_type"
 )["investment_type"].tolist()
 selected_types = st.sidebar.multiselect("Investment Types", inv_types, default=[])
+top_n_regions = st.sidebar.slider("Top N Investor Regions", 5, 30, 10)
 
 # Build WHERE clause
 where_parts = ["announced_year BETWEEN {min_y} AND {max_y}"]
@@ -103,6 +104,38 @@ with col_map:
 
 with col_table:
     st.dataframe(geo_df.head(20), use_container_width=True, hide_index=True, height=400)
+
+# Investor Regions bar chart
+investor_regions = query_df(
+    f"""
+    SELECT investor_region AS region, COUNT(*) AS investments
+    FROM core.vc_investments
+    WHERE {where_clause} AND investor_region IS NOT NULL
+    GROUP BY investor_region
+    ORDER BY investments DESC
+    LIMIT {top_n_regions}
+    """
+)
+
+if not investor_regions.empty:
+    fig_regions = px.bar(
+        investor_regions,
+        y="region",
+        x="investments",
+        orientation="h",
+        color="investments",
+        color_continuous_scale="Blues",
+        labels={"investments": "Investment Count", "region": "Investor Region"},
+    )
+    fig_regions.update_layout(
+        yaxis=dict(autorange="reversed"),
+        height=max(300, len(investor_regions) * 28),
+        xaxis_title="Investment Count",
+        yaxis_title="",
+        showlegend=False,
+        title="Investor Regions",
+    )
+    st.plotly_chart(fig_regions, use_container_width=True)
 
 # =============================================================================
 # 2. Top Investors
