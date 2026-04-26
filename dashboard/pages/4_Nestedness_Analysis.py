@@ -174,61 +174,34 @@ with col2:
 # =============================================================================
 st.subheader("Degree vs Local Nestedness")
 
-_scatter_ctrl_left, _scatter_ctrl_right = st.columns([2, 1])
-with _scatter_ctrl_left:
-    view_mode = st.radio(
-        "View mode", ["Faceted (all communities)", "Single community"], horizontal=True
-    )
+_, _scatter_ctrl_right = st.columns([2, 1])
+
 with _scatter_ctrl_right:
     _log_cols = st.columns(2)
     log_x = _log_cols[0].checkbox("Log x-axis", value=False)
     log_y = _log_cols[1].checkbox("Log y-axis", value=False)
 
-if view_mode == "Faceted (all communities)":
-    fig_scatter = px.scatter(
-        filtered,
-        x="degree",
-        y="local_g_norm",
-        color="set_label",
-        facet_col="community",
-        color_discrete_map={
-            SET_LABELS[0]: SET_COLORS[0],
-            SET_LABELS[1]: SET_COLORS[1],
-        },
-        hover_data=["node", "degree", "local_g_norm"],
-        opacity=0.5,
-        render_mode="webgl",
-    )
-    fig_scatter.update_layout(height=500)
-    if log_x:
-        fig_scatter.update_xaxes(type="log")
-    if log_y:
-        fig_scatter.update_yaxes(type="log")
-    st.plotly_chart(fig_scatter, use_container_width=True)
-else:
-    single_comm = st.selectbox("Select community", selected_communities)
-    comm_data = filtered[filtered["community"] == single_comm]
-    fig_scatter = px.scatter(
-        comm_data,
-        x="degree",
-        y="local_g_norm",
-        color="set_label",
-        color_discrete_map={
-            SET_LABELS[0]: SET_COLORS[0],
-            SET_LABELS[1]: SET_COLORS[1],
-        },
-        hover_data=["node", "degree", "local_g_norm"],
-        opacity=0.5,
-        render_mode="webgl",
-        trendline="ols",
-        title=f"{single_comm} - Degree vs Local Nestedness",
-    )
-    fig_scatter.update_layout(height=500)
-    if log_x:
-        fig_scatter.update_xaxes(type="log")
-    if log_y:
-        fig_scatter.update_yaxes(type="log")
-    st.plotly_chart(fig_scatter, use_container_width=True)
+
+fig_scatter = px.scatter(
+    filtered,
+    x="degree",
+    y="local_g_norm",
+    color="set_label",
+    facet_col="community",
+    color_discrete_map={
+        SET_LABELS[0]: SET_COLORS[0],
+        SET_LABELS[1]: SET_COLORS[1],
+    },
+    hover_data=["node", "degree", "local_g_norm"],
+    opacity=0.5,
+    render_mode="webgl",
+)
+fig_scatter.update_layout(height=500)
+if log_x:
+    fig_scatter.update_xaxes(type="log")
+if log_y:
+    fig_scatter.update_yaxes(type="log")
+st.plotly_chart(fig_scatter, use_container_width=True)
 
 # =============================================================================
 # 3. Histogram: Local g_norm Distribution
