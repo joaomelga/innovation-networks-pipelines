@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
 
+import plotly.colors as pc
 import sys
 from pathlib import Path
 
@@ -108,6 +109,17 @@ for comm in communities:
     )
 summary_df = pd.DataFrame(summary_rows)
 
+_COMMUNITY_SCALE = ["#f39c12", "#2ecc71", "#2ec7cc"]
+_g_min = summary_df["g_norm"].min()
+_g_max = summary_df["g_norm"].max()
+_g_denom = (_g_max - _g_min) if _g_max != _g_min else 1.0
+community_colors = {
+    row["Community"]: pc.sample_colorscale(
+        _COMMUNITY_SCALE, (row["g_norm"] - _g_min) / _g_denom
+    )[0]
+    for _, row in summary_df.iterrows()
+}
+
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -116,7 +128,7 @@ with col1:
         x="Community",
         y="g_norm",
         color="g_norm",
-        color_continuous_scale=["#e74c3c", "#f39c12", "#2ecc71"],
+        color_continuous_scale=_COMMUNITY_SCALE,
         hover_data=["g_raw", "g_conf", "Nodes"],
         text=summary_df["g_norm"].apply(lambda x: f"{x:.4f}"),
     )
@@ -293,6 +305,7 @@ if not geo_df.empty:
             x="node_count",
             y="country",
             color="community",
+            color_discrete_map=community_colors,
             orientation="h",
             barmode="group",
             labels={"node_count": "Node Count", "country": "Country"},
@@ -325,6 +338,7 @@ if not geo_df.empty:
             x="node_count",
             y="region",
             color="community",
+            color_discrete_map=community_colors,
             orientation="h",
             barmode="group",
             labels={"node_count": "Node Count", "region": "Region"},
