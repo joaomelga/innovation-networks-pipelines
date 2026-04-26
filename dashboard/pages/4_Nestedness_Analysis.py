@@ -28,7 +28,15 @@ st.markdown(
 
 # Load data
 df = query_df("SELECT * FROM experiment.johnson_nestedness")
-communities = sorted(df["community"].unique())
+def _community_sort_key(name):
+    parts = name.rsplit(" ", 1)
+    try:
+        return int(parts[-1])
+    except ValueError:
+        return float("inf")
+
+communities = sorted(df["community"].unique(), key=_community_sort_key)
+community_sizes = df.groupby("community").size().to_dict()
 
 _GEO_SQL = """
 WITH investor_geo AS (
@@ -61,8 +69,19 @@ geo_df = query_df(_GEO_SQL)
 
 # Sidebar filters
 st.sidebar.header("Filters")
+_all_sizes = [community_sizes.get(c, 0) for c in communities]
+_size_min, _size_max = min(_all_sizes), max(_all_sizes)
+size_range = st.sidebar.slider(
+    "Community Size (nodes)",
+    min_value=_size_min,
+    max_value=_size_max,
+    value=(_size_min, _size_max),
+)
+size_filtered_communities = [
+    c for c in communities if size_range[0] <= community_sizes.get(c, 0) <= size_range[1]
+]
 selected_communities = st.sidebar.multiselect(
-    "Communities", communities, default=communities
+    "Communities", size_filtered_communities, default=size_filtered_communities
 )
 set_filter = st.sidebar.radio("Bipartite Set", ["All", "Late-stage (Set 0)", "Early-stage (Set 1)"])
 degree_range = st.sidebar.slider(
@@ -71,7 +90,6 @@ degree_range = st.sidebar.slider(
     int(df["degree"].max()),
     (int(df["degree"].min()), int(df["degree"].max())),
 )
-log_y = st.sidebar.checkbox("Log scale (y-axis)", value=False)
 top_n = st.sidebar.slider("Top N countries / Regions", 5, 30, 10)
 
 # Apply filters
@@ -92,7 +110,7 @@ filtered["set_label"] = filtered["set"].map(SET_LABELS)
 st.subheader("Global Nestedness (g_norm) Across Communities")
 
 summary_rows = []
-for comm in communities:
+for comm in selected_communities:
     group = df[df["community"] == comm]
     summary_rows.append(
         {
@@ -131,6 +149,7 @@ with col1:
         color_continuous_scale=_COMMUNITY_SCALE,
         hover_data=["g_raw", "g_conf", "Nodes"],
         text=summary_df["g_norm"].apply(lambda x: f"{x:.4f}"),
+        category_orders={"Community": list(summary_df["Community"])},
     )
     fig_bar.add_hline(
         y=1.0,
@@ -155,9 +174,15 @@ with col2:
 # =============================================================================
 st.subheader("Degree vs Local Nestedness")
 
-view_mode = st.radio(
-    "View mode", ["Faceted (all communities)", "Single community"], horizontal=True
-)
+_scatter_ctrl_left, _scatter_ctrl_right = st.columns([2, 1])
+with _scatter_ctrl_left:
+    view_mode = st.radio(
+        "View mode", ["Faceted (all communities)", "Single community"], horizontal=True
+    )
+with _scatter_ctrl_right:
+    _log_cols = st.columns(2)
+    log_x = _log_cols[0].checkbox("Log x-axis", value=False)
+    log_y = _log_cols[1].checkbox("Log y-axis", value=False)
 
 if view_mode == "Faceted (all communities)":
     fig_scatter = px.scatter(
@@ -175,6 +200,8 @@ if view_mode == "Faceted (all communities)":
         render_mode="webgl",
     )
     fig_scatter.update_layout(height=500)
+    if log_x:
+        fig_scatter.update_xaxes(type="log")
     if log_y:
         fig_scatter.update_yaxes(type="log")
     st.plotly_chart(fig_scatter, use_container_width=True)
@@ -197,6 +224,8 @@ else:
         title=f"{single_comm} - Degree vs Local Nestedness",
     )
     fig_scatter.update_layout(height=500)
+    if log_x:
+        fig_scatter.update_xaxes(type="log")
     if log_y:
         fig_scatter.update_yaxes(type="log")
     st.plotly_chart(fig_scatter, use_container_width=True)
