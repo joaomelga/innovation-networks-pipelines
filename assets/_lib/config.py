@@ -23,12 +23,8 @@ def clustering_method() -> str:
     return m
 
 
-def run_name() -> str:
-    return f"{region()}_{clustering_method()}"
-
-
 def output_dir() -> Path:
-    d = REPO_ROOT / "outputs" / run_name()
+    d = REPO_ROOT / "outputs" / region()
     d.mkdir(parents=True, exist_ok=True)
     return d
 

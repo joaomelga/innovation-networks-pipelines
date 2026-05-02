@@ -11,10 +11,14 @@ depends:
 
 description: |
   Build the canonical edges table: each row is an investment pair (Source ↔ Target)
-  with community assignment. Only keeps edges where both investors belong
-  to the same community.
+  with community assignment, duplicated once per clustering method stored in graph.network.
+  Only keeps edges where both investors belong to the same community.
 
 columns:
+  - name: clustering_method
+    type: string
+    checks:
+      - name: not_null
   - name: Source
     type: string
     checks:
@@ -34,8 +38,12 @@ custom_checks:
 
 @bruin */
 
-WITH edges_with_community AS (
+WITH methods AS (
+    SELECT DISTINCT clustering_method FROM graph.network
+),
+edges_with_community AS (
     SELECT
+        m.clustering_method,
         p.investor_name_left,
         p.investor_name_right,
         p.announced_year_left,
@@ -56,10 +64,16 @@ WITH edges_with_community AS (
         nl.community_id AS community_left,
         nr.community_id AS community_right
     FROM core.investment_pairs p
-    LEFT JOIN graph.network nl ON nl.node = p.investor_name_left
-    LEFT JOIN graph.network nr ON nr.node = p.investor_name_right
+    CROSS JOIN methods m
+    LEFT JOIN graph.network nl
+        ON nl.node = p.investor_name_left
+        AND nl.clustering_method = m.clustering_method
+    LEFT JOIN graph.network nr
+        ON nr.node = p.investor_name_right
+        AND nr.clustering_method = m.clustering_method
 )
 SELECT
+    clustering_method,
     investor_name_left,
     investor_name_right,
     announced_year_left,
@@ -79,7 +93,6 @@ SELECT
     category_right,
     community_left,
     community_right,
-    -- Assign community: same community on both sides => that community; else -1
     CASE
         WHEN community_left = community_right AND community_left IS NOT NULL
         THEN community_left
