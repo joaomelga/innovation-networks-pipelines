@@ -81,15 +81,9 @@ st.subheader("Experiments Overview")
 _all_exps = discover_experiments()
 _exp_cols = st.columns(max(len(_all_exps), 1))
 for _col, (_exp_name, _db_path) in zip(_exp_cols, _all_exps.items()):
-    # Parse clustering_method from config.yml (local mode only; not available in HF mode)
-    _method = "unknown"
-    if not str(_db_path).startswith("hf://"):
-        _config_path = Path(_db_path).parent / "config.yml"
-        if _config_path.exists():
-            for _line in _config_path.read_text().splitlines():
-                if _line.startswith("clustering_method"):
-                    _method = _line.split(":", 1)[-1].strip()
-                    break
+    # Derive clustering_method from run directory name (e.g. "us_nestlon" -> "nestlon")
+    _parts = _exp_name.rsplit("_", 1)
+    _method = _parts[-1] if len(_parts) == 2 else "unknown"
     _info = _METHOD_INFO.get(_method, {"icon": "⚙️", "name": _method, "description": "No description available."})
     _is_active = _exp_name == selected
     with _col:

@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXPERIMENTS_DIR = REPO_ROOT / "experiments"
+OUTPUTS_DIR = REPO_ROOT / "outputs"
 
 # Consistent color scheme: late-stage (set 0) = blue, early-stage (set 1) = red
 SET_0_COLOR = "#3498db"
@@ -52,14 +52,14 @@ def discover_experiments() -> dict[str, str]:
 
 def _discover_experiments_local() -> dict[str, Path]:
     experiments = {}
-    if not EXPERIMENTS_DIR.exists():
+    if not OUTPUTS_DIR.exists():
         return experiments
-    for exp_dir in sorted(EXPERIMENTS_DIR.iterdir()):
-        if not exp_dir.is_dir():
+    for run_dir in sorted(OUTPUTS_DIR.iterdir()):
+        if not run_dir.is_dir():
             continue
-        duckdb_files = list(exp_dir.glob("*.duckdb"))
-        if duckdb_files:
-            experiments[exp_dir.name] = duckdb_files[0]
+        db_file = run_dir / "pipeline.duckdb"
+        if db_file.exists():
+            experiments[run_dir.name] = db_file
     return experiments
 
 
