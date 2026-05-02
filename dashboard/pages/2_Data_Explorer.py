@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from db import query_df, format_number, experiment_selector
+from db import query_df, format_number, region_selector
 
 st.set_page_config(page_title="Data Explorer", layout="wide")
 
-selected = experiment_selector()
+selected = region_selector()
 if not selected:
     st.stop()
 

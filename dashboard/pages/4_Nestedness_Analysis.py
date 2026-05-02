@@ -12,13 +12,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from db import query_df, SET_COLORS, SET_LABELS, experiment_selector
+from db import query_df, SET_COLORS, SET_LABELS, region_selector, clustering_method_selector
 
 st.set_page_config(page_title="Nestedness Analysis", layout="wide")
 
-selected = experiment_selector()
+selected = region_selector()
 if not selected:
     st.stop()
+method = clustering_method_selector()
 
 st.title("Johnson Nestedness Analysis")
 st.markdown(
@@ -27,7 +28,7 @@ st.markdown(
 )
 
 # Load data
-df = query_df("SELECT * FROM experiment.johnson_nestedness")
+df = query_df(f"SELECT * FROM experiment.johnson_nestedness WHERE clustering_method = '{method}'")
 def _community_sort_key(name):
     parts = name.rsplit(" ", 1)
     try:
@@ -38,14 +39,16 @@ def _community_sort_key(name):
 communities = sorted(df["community"].unique(), key=_community_sort_key)
 community_sizes = df.groupby("community").size().to_dict()
 
-_GEO_SQL = """
+_GEO_SQL = f"""
 WITH investor_geo AS (
     SELECT Source AS node, ANY_VALUE(investor_country_left) AS country, ANY_VALUE(investor_region_left) AS region
     FROM graph.edges
+    WHERE clustering_method = '{method}'
     GROUP BY Source
     UNION ALL
     SELECT Target AS node, ANY_VALUE(investor_country_right) AS country, ANY_VALUE(investor_region_right) AS region
     FROM graph.edges
+    WHERE clustering_method = '{method}'
     GROUP BY Target
 ),
 deduped AS (
@@ -62,6 +65,7 @@ SELECT
 FROM experiment.johnson_nestedness n
 JOIN deduped d ON n.node = d.node
 WHERE d.country IS NOT NULL
+  AND n.clustering_method = '{method}'
 GROUP BY n.community, n.set, d.country, d.region
 ORDER BY n.community, node_count DESC
 """
@@ -348,7 +352,7 @@ if not geo_df.empty:
         fig_region.update_layout(height=max(300, len(top_regions) * 28), yaxis_title="")
         st.plotly_chart(fig_region, use_container_width=True)
 else:
-    st.info("Geographic data not available for this experiment.")
+    st.info("Geographic data not available for this region/method combination.")
 
 # =============================================================================
 # 6. Correlation Statistics
