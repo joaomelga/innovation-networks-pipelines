@@ -1,34 +1,34 @@
 # Innovation Networks Pipelines
 
-A multi-country, multi-method, experiment-driven research platform for analyzing structural properties of innovation networks — investor syndication, enterprise co-investment, and beyond. Built around reproducible [Bruin](https://github.com/bruin-data/bruin) pipelines and interactive Streamlit dashboards, it supports adding new countries, datasets, and network analysis methods incrementally.
+A multi-region, multi-method research platform for analyzing structural properties of innovation networks — investor syndication, enterprise co-investment, and beyond. Built around reproducible [Bruin](https://github.com/bruin-data/bruin) pipelines and interactive Streamlit dashboards.
 
 ## Contents
 
-- [Dashboard](#dashboard)
-- [Motivation](#motivation)
-- [What's Inside](#whats-inside)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Adding a New Experiment](#adding-a-new-experiment)
-- [Clustering Methods](#clustering-methods)
-- [References](#references)
+- [Innovation Networks Pipelines](#innovation-networks-pipelines)
+  - [Contents](#contents)
+  - [Dashboard](#dashboard)
+  - [Motivation](#motivation)
+  - [What's Inside](#whats-inside)
+  - [Project Structure](#project-structure)
+  - [Prerequisites](#prerequisites)
+    - [uv (Python package manager)](#uv-python-package-manager)
+    - [Bruin CLI](#bruin-cli)
+  - [Quick Start](#quick-start)
+    - [1. Install dependencies](#1-install-dependencies)
+    - [2. Run the pipeline for a region](#2-run-the-pipeline-for-a-region)
+    - [3. Launch the Streamlit dashboard](#3-launch-the-streamlit-dashboard)
+  - [Environment Variables](#environment-variables)
+  - [Clustering Methods](#clustering-methods)
+  - [References](#references)
+  - [Author](#author)
 
 ## Dashboard
 
-The interactive dashboard lets you explore any experiment without writing code — switch between pipeline layers, inspect community structure, and visualize nestedness results in real time.
+The interactive dashboard lets you explore any region's pipeline output — switch between pipeline layers, inspect community structure, and visualize nestedness results in real time.
 
 > **Live app:** [innovation-networks-pipelines.streamlit.app](https://innovation-networks-pipelines.streamlit.app/)
 
-![Dashboard home page showing pipeline overview and key metrics](docs/images/dashboard-home.png)
-
-Community Explorer lets you navigate detected communities, inspect their bipartite composition, and render the network graph interactively.
-
-![Demo: exploring communities in the dashboard](docs/images/demo-explore-communities.gif)
-
-Nestedness Analysis surfaces Johnson g_norm charts, degree-vs-nestedness scatter plots, and asymmetry breakdowns across all investor roles.
-
-![Demo: analysing nestedness in the dashboard](docs/images/demo-analyse-nestedness.gif)
+Community Explorer and Nestedness Analysis support a **Clustering Method** selector to compare nestlon and modularity results within the same run.
 
 ## Motivation
 
@@ -37,41 +37,51 @@ This repository bridges **academic research** and **production-grade data engine
 ## What's Inside
 
 - **Bruin pipelines** for ingesting, cleaning, and transforming Crunchbase venture capital data
-- **Graph construction** of bipartite investor syndication networks with pluggable community detection
+- **Graph construction** of bipartite investor syndication networks with all clustering methods run in a single pass
 - **Nestedness analysis** using the Johnson et al. (2013) methodology
 - **NESTLON algorithm** (Grimm & Tessone, 2017) for nestedness-aware community detection
-- **DuckDB** as local analytical warehouse (one per experiment)
+- **DuckDB** as local analytical warehouse (one per region, all methods stored together)
 - **Interactive Streamlit dashboards** for exploring pipeline data, communities, and nestedness results
 
 ## Project Structure
 
 ```
 innovation-networks-pipelines/
-├── .bruin.yml               # Bruin project configuration
+├── .bruin.yml               # Bruin environments: us, fr, eu
+├── pipeline.yml             # Single unified pipeline definition
+├── pyproject.toml           # Python dependencies
+├── assets/                  # Unified pipeline assets (raw → reports)
+│   ├── _lib/
+│   │   └── config.py        # REGION env var resolution, path helpers
+│   ├── raw/                 # Ingest raw CSVs
+│   ├── staging/             # Clean and filter
+│   ├── core/                # VC focus, investment pairs
+│   ├── graph/               # Community detection (all methods in one pass)
+│   ├── experiments/
+│   │   └── johnson/         # Johnson nestedness (all methods in one pass)
+│   └── reports/             # Figures and summary CSVs
 ├── lib/                     # Shared Python library
-│   ├── graph/               # Graph construction, clustering methods (modularity, NESTLON)
+│   ├── graph/               # Graph construction, clustering (modularity, NESTLON)
 │   ├── nestedness/          # Nestedness calculators (Johnson JDM-NODF)
 │   └── utils/               # DuckDB helpers, bipartite matrix utilities
-├── data/                    # Shared raw data (CSV.GZ, git-lfs tracked)
+├── data/                    # Raw data (CSV.GZ)
 │   ├── us/                  # US Crunchbase data
 │   └── fr/                  # France Crunchbase data
-├── experiments/             # Bruin experiment pipelines (raw → reports)
-│   └── us-modularity/       # US data + greedy modularity community detection
-│       ├── pipeline.yml
-│       ├── config.yml       # country: us, clustering_method: modularity
-│       └── assets/          # raw/ staging/ core/ graph/ experiments/ reports/
-└── dashboard/               # Streamlit multi-experiment dashboard
+├── outputs/                 # Generated DuckDBs and figures (git-ignored)
+│   ├── us/pipeline.duckdb
+│   └── fr/pipeline.duckdb
+└── dashboard/               # Streamlit multi-region dashboard
     ├── 0_Home.py
     └── pages/
 ```
 
-Each experiment is a **self-contained Bruin pipeline** with its own DuckDB. Adding a new experiment (country or clustering method) means adding a new directory under `experiments/` with a different `config.yml`.
+A single pipeline run for a given region computes community structure for **all clustering methods** at once (`nestlon` and `modularity`). Results are stored in the same DuckDB with a `clustering_method` column.
 
 ## Prerequisites
 
 ### uv (Python package manager)
 
-This project uses [uv](https://docs.astral.sh/uv/) to manage Python dependencies per directory. Install it by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+This project uses [uv](https://docs.astral.sh/uv/) to manage Python dependencies. Install it by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### Bruin CLI
 
@@ -79,66 +89,70 @@ Install the [Bruin CLI](https://github.com/bruin-data/bruin) to run the data pip
 
 ## Quick Start
 
-### 1. Run the us-modularity experiment
+### 1. Install dependencies
 
 ```bash
-# Install Python dependencies
-cd experiments/us-modularity
 uv sync
-cd ../..
-
-# Validate pipeline assets
-bruin validate experiments/us-modularity
-
-# Run the full pipeline (use --workers 1 on Windows to avoid DuckDB lock issues)
-bruin run experiments/us-modularity --workers 1
 ```
 
-The pipeline runs in layer order: `raw` → `staging` → `core` → `graph` → `experiments` → `reports`.
+### 2. Run the pipeline for a region
 
-To run a single asset or a specific layer:
+@todo: add possibility to run only one clustering method
+
 ```bash
-# Run from a specific asset onward
-bruin run experiments/us-modularity --downstream experiments/us-modularity/assets/graph/graph_nodes.py
+# United States
+REGION=us bruin run . --environment us assets/ --workers 1
+
+# France
+REGION=fr bruin run . --environment fr assets/ --workers 1
+
+# Europe
+REGION=eu bruin run . --environment eu assets/ --workers 1
+```
+
+The pipeline runs in layer order: `raw` → `staging` → `core` → `graph` → `experiments` → `reports`. Both `nestlon` and `modularity` community detection methods are run in a single pass and stored in `outputs/{REGION}/pipeline.duckdb`.
+
+To run a single asset or start from a specific point:
+
+```bash
+# Run from graph onward (re-run community detection and analysis)
+REGION=us bruin run . --environment us --downstream assets/graph/graph_nodes.py assets/
 
 # Run a single asset
-bruin run experiments/us-modularity/assets/experiments/johnson/exp_johnson_nestedness.py
+REGION=us bruin run . --environment us assets/experiments/johnson/exp_johnson_nestedness.py
 ```
 
-### 2. Launch the Streamlit dashboard
+### 3. Launch the Streamlit dashboard
 
 ```bash
 cd dashboard
-uv sync
 uv run streamlit run 0_Home.py
 ```
 
-The dashboard auto-discovers any experiment with a populated DuckDB file. Use the **Experiment** selector in the sidebar to switch between experiments. Pages available:
+The dashboard auto-discovers any region with a populated `outputs/{region}/pipeline.duckdb` file. Use the **Region** selector in the sidebar to switch between regions.
 
-| Page | Description |
-|---|---|
-| Home | Pipeline overview, key metrics, nestedness summary |
-| Pipeline Funnel | Record counts at each layer, filter breakdowns |
-| Data Explorer | Geography, sectors, funding distributions, temporal trends |
-| Community Explorer | Community structure, bipartite composition, network visualization |
-| Nestedness Analysis | Johnson g_norm charts, degree vs nestedness scatter, asymmetry analysis |
+| Page | Region selector | Method selector | Description |
+|---|---|---|---|
+| Home | — | — | Pipeline overview and run instructions |
+| Pipeline Funnel | ✓ | — | Record counts at each layer, filter breakdowns |
+| Data Explorer | ✓ | — | Geography, sectors, funding distributions, temporal trends |
+| Community Explorer | ✓ | ✓ | Community structure, bipartite composition, network visualization |
+| Nestedness Analysis | ✓ | ✓ | Johnson g_norm charts, degree vs nestedness scatter, asymmetry analysis |
 
-## Adding a New Experiment
+## Environment Variables
 
-To add a new country or clustering method:
-
-1. Create `experiments/<name>/` with a `pipeline.yml`, `config.yml`, `pyproject.toml`, and `assets/`
-2. Set `clustering_method` in `config.yml` to `modularity` or `nestlon`
-3. Add a DuckDB connection entry to `.bruin.yml`
-4. Run with `bruin run experiments/<name> --workers 1`
-
-The dashboard will automatically pick up the new experiment's DuckDB file.
+| Variable | Default | Description |
+|---|---|---|
+| `REGION` | `us` | Target region — must match a `.bruin.yml` environment (`us`, `fr`, `eu`) |
+| `BRUIN_RAW_DIR` | `data/{REGION}/` | Override path to raw CSV data directory |
+| `BRUIN_DUCKDB_PATH` | `outputs/{REGION}/pipeline.duckdb` | Override path to the output DuckDB file |
+| `BRUIN_FIGURES_DIR` | `outputs/{REGION}/figures/` | Override path to the figures output directory |
 
 ## Clustering Methods
 
-Methods are registered in `lib/graph/` and selected via `config.yml`:
+All methods run automatically in every pipeline execution. Results are differentiated by the `clustering_method` column in `graph.network`, `graph.edges`, and `experiment.johnson_nestedness`.
 
-| Method | `config.yml` value | Description |
+| Method | `clustering_method` value | Description |
 |---|---|---|
 | Greedy modularity | `modularity` | Optimizes modularity Q (Newman) |
 | NESTLON | `nestlon` | Detects nested components via local neighborhood containment (Grimm & Tessone, 2017) |
