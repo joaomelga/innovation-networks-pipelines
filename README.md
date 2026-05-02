@@ -28,7 +28,14 @@ The interactive dashboard lets you explore any region's pipeline output — swit
 
 > **Live app:** [innovation-networks-pipelines.streamlit.app](https://innovation-networks-pipelines.streamlit.app/)
 
+![Dashboard home page showing pipeline overview and key metrics](docs/images/dashboard-home.png)
+
 Community Explorer and Nestedness Analysis support a **Clustering Method** selector to compare nestlon and modularity results within the same run.
+
+![Demo: exploring communities in the dashboard](docs/images/demo-explore-communities.gif)
+
+![Demo: analysing nestedness in the dashboard](docs/images/demo-analyse-nestedness.gif)
+
 
 ## Motivation
 
