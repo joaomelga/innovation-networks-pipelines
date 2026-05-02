@@ -1,4 +1,0 @@
-country: us
-clustering_method: modularity
-target_communities: [0, 1, 2]
-data_dir: ../../data/us

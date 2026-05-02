@@ -1,7 +1,7 @@
 """@bruin
 name: graph.network
 image: python:3.13
-connection: duckdb-us-nestlon
+connection: duckdb-default
 
 depends:
   - core.investment_pairs
@@ -12,7 +12,7 @@ materialization:
 
 description: |
   Build bipartite syndication graph from investment pairs.
-  Detect communities using the clustering method specified in config.yml.
+  Detect communities using the clustering method specified by CLUSTERING_METHOD env var.
   Produce the canonical 'nodes' table with community assignments and bipartite set membership.
 
 columns:
@@ -31,21 +31,19 @@ import pandas as pd
 import duckdb
 import os
 import sys
-import yaml
 from pathlib import Path
 
-# Add repo root to path so lib/ is importable
-EXPERIMENT_DIR = Path(__file__).resolve().parent.parent.parent
-REPO_ROOT = EXPERIMENT_DIR.parent.parent
-sys.path.insert(0, str(REPO_ROOT))
+_ASSETS_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ASSETS_DIR))
+sys.path.insert(0, str(_ASSETS_DIR.parent))
 
+from _lib.config import clustering_method, duckdb_path
 from lib.graph.construction import build_bipartite_graph, get_bipartite_sets
 from lib.graph.registry import get_method
 import lib.graph.modularity  # register modularity
 import lib.graph.nestlon     # register nestlon
 
-CONFIG = yaml.safe_load(open(EXPERIMENT_DIR / "config.yml"))
-DB_PATH = os.environ.get("BRUIN_DUCKDB_PATH", str(EXPERIMENT_DIR / "us_nestlon.duckdb"))
+DB_PATH = str(duckdb_path())
 
 
 def materialize():
@@ -61,7 +59,7 @@ def materialize():
     set_0, set_1 = get_bipartite_sets(G)
 
     # 3. Dispatch to configured clustering method
-    method_name = CONFIG["clustering_method"]
+    method_name = clustering_method()
     print(f"Using clustering method: {method_name}")
     method = get_method(method_name)
     communities = method.detect_communities(G)

@@ -1,7 +1,7 @@
 """@bruin
 name: raw.investments
 image: python:3.13
-connection: duckdb-us-modularity
+connection: duckdb-default
 
 materialization:
   type: table
@@ -43,13 +43,14 @@ columns:
 
 import pandas as pd
 import os
-import yaml
+import sys
 from pathlib import Path
 
-EXPERIMENT_DIR = Path(__file__).resolve().parent.parent.parent
-CONFIG = yaml.safe_load(open(EXPERIMENT_DIR / "config.yml"))
-RAW_DIR = os.environ.get("BRUIN_RAW_DIR", str(
-    (EXPERIMENT_DIR / CONFIG["data_dir"]).resolve()))
+_ASSETS_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ASSETS_DIR))
+sys.path.insert(0, str(_ASSETS_DIR.parent))
+from _lib.config import data_dir
+RAW_DIR = str(data_dir())
 
 
 def materialize():
