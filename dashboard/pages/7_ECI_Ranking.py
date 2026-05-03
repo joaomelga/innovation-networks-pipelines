@@ -423,6 +423,14 @@ else:
                     for _, r in late_sub.iterrows()
                 ]
 
+                # Re-order rows and columns by RCA ≥ 1 occurrence count in the submatrix
+                row_order = np.argsort(sub_M.sum(axis=1).astype(np.int64))[::-1]
+                col_order = np.argsort(sub_M.sum(axis=0).astype(np.int64))[::-1]
+                sub_M = sub_M[np.ix_(row_order, col_order)]
+                sub_rca = sub_rca[np.ix_(row_order, col_order)]
+                early_labels = [early_labels[i] for i in row_order]
+                late_labels = [late_labels[i] for i in col_order]
+
                 if weighted_overlay:
                     heat = np.clip(sub_rca, 0, 5)
                     colorbar_title = "RCA (clipped at 5)"
