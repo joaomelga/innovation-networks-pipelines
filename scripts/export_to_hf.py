@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def resolve_db_path(experiment: str, db_path_override: str | None) -> str:
     if db_path_override:
         return db_path_override
-    exp_dir = REPO_ROOT / "experiments" / experiment
+    exp_dir = REPO_ROOT / "outputs" / experiment
     candidates = list(exp_dir.glob("*.duckdb"))
     if not candidates:
         raise FileNotFoundError(f"No .duckdb file found in {exp_dir}/")
