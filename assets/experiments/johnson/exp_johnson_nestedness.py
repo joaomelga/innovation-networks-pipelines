@@ -78,8 +78,9 @@ def materialize():
         all_comm_ids = sorted(method_nodes["community_id"].unique())
 
         if method == "modularity":
-            target_communities = [c for c in [0, 1, 2] if c in all_comm_ids]
-            for comm_id in target_communities:
+            # target_communities = [c for c in [0, 1, 2] if c in all_comm_ids]
+
+            for comm_id in all_comm_ids:
                 print(f"\nProcessing Community {comm_id}...")
                 result = compute_community_nestedness(method_nodes, method_edges, comm_id)
                 if result is None:

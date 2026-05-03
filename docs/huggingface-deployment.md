@@ -4,7 +4,7 @@ The dashboard supports two modes controlled by a single environment variable:
 
 | Mode | Condition | Data source |
 |------|-----------|-------------|
-| **Local** | `HF_DATASET_REPO` not set | `.duckdb` files under `experiments/` |
+| **Local** | `HF_DATASET_REPO` not set | `.duckdb` files under `outputs/` |
 | **HF** | `HF_DATASET_REPO` is set | Parquet files on HuggingFace Datasets |
 
 HF dataset repo: [`joaomelga/innovation-networks-pipelines`](https://huggingface.co/datasets/joaomelga/innovation-networks-pipelines)
@@ -25,12 +25,12 @@ cd ./scripts
 uv sync
 
 # Export an experiment (auto-discovers the .duckdb file)
-uv run python export_to_hf.py --experiment us-modularity
+uv run python export_to_hf.py --experiment us
 
 # Or with an explicit path
 uv run python export_to_hf.py \
-  --experiment us-modularity \
-  --db-path ../experiments/us-modularity/us_modularity.duckdb
+  --experiment us \
+  --db-path ../outputs/us/us_modularity.duckdb
 ```
 
 This exports every table in `HF_TABLES` (defined in `dashboard/db.py`) as a Parquet file and uploads them to `{experiment}/` in the HF dataset repo. Tables that don't exist in a given experiment are silently skipped.
@@ -45,7 +45,7 @@ This exports every table in `HF_TABLES` (defined in `dashboard/db.py`) as a Parq
 HF_DATASET_REPO=joaomelga/innovation-networks-pipelines uv run streamlit run dashboard/0_Home.py
 ```
 
-The dashboard will discover experiments from HF and query Parquet files over HTTP — no local `.duckdb` file needed.
+The dashboard will discover outputs from HF and query Parquet files over HTTP — no local `.duckdb` file needed.
 
 ---
 
@@ -71,7 +71,7 @@ When `HF_DATASET_REPO` is set, `dashboard/db.py`:
 3. Loads the `httpfs` extension and creates SQL views like:
    ```sql
    CREATE VIEW graph.network AS
-     SELECT * FROM read_parquet('https://huggingface.co/datasets/joaomelga/innovation-networks-pipelines/resolve/main/us-modularity/graph_network.parquet')
+     SELECT * FROM read_parquet('https://huggingface.co/datasets/joaomelga/innovation-networks-pipelines/resolve/main/us/graph_network.parquet')
    ```
 
 All dashboard pages use unchanged `schema.table` SQL — the views make the switch transparent.

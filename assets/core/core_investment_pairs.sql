@@ -39,11 +39,17 @@ custom_checks:
 @bruin */
 
 WITH early_stages AS (
-    SELECT * FROM core.vc_investments
+    SELECT
+        * EXCLUDE (investor_node_name),
+        investor_name || '-early' AS investor_node_name
+    FROM core.vc_investments
     WHERE investment_type IN ('angel', 'pre_seed', 'seed', 'series_a')
 ),
 late_stages AS (
-    SELECT * FROM core.vc_investments
+    SELECT
+        * EXCLUDE (investor_node_name),
+        investor_name || '-late' AS investor_node_name
+    FROM core.vc_investments
     WHERE investment_type IN ('series_b', 'series_c', 'series_d', 'series_e',
                               'series_f', 'series_g', 'series_h', 'series_i')
 ),
