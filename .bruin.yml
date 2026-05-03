@@ -1,9 +1,17 @@
-default_environment: default
+default_environment: us
 environments:
-    default:
+    us:
         connections:
             duckdb:
-                - name: duckdb-us-modularity
-                  path: experiments/us-modularity/us_modularity.duckdb
-                - name: duckdb-us-nestlon
-                  path: experiments/us-nestlon/us_nestlon.duckdb
+                - name: duckdb-default
+                  path: outputs/us/pipeline.duckdb
+    fr:
+        connections:
+            duckdb:
+                - name: duckdb-default
+                  path: outputs/fr/pipeline.duckdb
+    eu:
+        connections:
+            duckdb:
+                - name: duckdb-default
+                  path: outputs/eu/pipeline.duckdb

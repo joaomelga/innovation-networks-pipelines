@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXPERIMENTS_DIR = REPO_ROOT / "experiments"
+OUTPUTS_DIR = REPO_ROOT / "outputs"
 
 # Consistent color scheme: late-stage (set 0) = blue, early-stage (set 1) = red
 SET_0_COLOR = "#3498db"
@@ -16,7 +16,9 @@ SET_1_COLOR = "#e74c3c"
 SET_COLORS = {0: SET_0_COLOR, 1: SET_1_COLOR}
 SET_LABELS = {0: "Late-stage (Set 0)", 1: "Early-stage (Set 1)"}
 
-# Tables exported to HF Datasets as {experiment}/{schema}_{table}.parquet
+CLUSTERING_METHODS = ["nestlon", "modularity"]
+
+# Tables exported to HF Datasets as {region}/{schema}_{table}.parquet
 HF_TABLES = [
     ("raw", "companies"),
     ("raw", "investors"),
@@ -38,32 +40,28 @@ def _hf_repo() -> str | None:
     return os.environ.get("HF_DATASET_REPO")
 
 
-def discover_experiments() -> dict[str, str]:
-    """Return a dict mapping experiment name -> DuckDB path or HF sentinel path.
-
-    In HF mode, values are "hf://{name}" strings. In local mode, values are
-    absolute paths to .duckdb files.
-    """
+def discover_regions() -> dict[str, str]:
+    """Return a dict mapping region name -> DuckDB path or HF sentinel path."""
     repo = _hf_repo()
     if repo:
-        return _discover_experiments_hf(repo)
-    return _discover_experiments_local()
+        return _discover_regions_hf(repo)
+    return _discover_regions_local()
 
 
-def _discover_experiments_local() -> dict[str, Path]:
+def _discover_regions_local() -> dict[str, Path]:
     experiments = {}
-    if not EXPERIMENTS_DIR.exists():
+    if not OUTPUTS_DIR.exists():
         return experiments
-    for exp_dir in sorted(EXPERIMENTS_DIR.iterdir()):
-        if not exp_dir.is_dir():
+    for run_dir in sorted(OUTPUTS_DIR.iterdir()):
+        if not run_dir.is_dir():
             continue
-        duckdb_files = list(exp_dir.glob("*.duckdb"))
-        if duckdb_files:
-            experiments[exp_dir.name] = duckdb_files[0]
+        db_file = run_dir / "pipeline.duckdb"
+        if db_file.exists():
+            experiments[run_dir.name] = db_file
     return experiments
 
 
-def _discover_experiments_hf(repo: str) -> dict[str, str]:
+def _discover_regions_hf(repo: str) -> dict[str, str]:
     from huggingface_hub import list_repo_tree, RepoFolder
 
     experiments = {}
@@ -73,42 +71,54 @@ def _discover_experiments_hf(repo: str) -> dict[str, str]:
     return experiments
 
 
-def get_selected_experiment() -> str | None:
-    """Return the currently selected experiment name from session state."""
-    return st.session_state.get("selected_experiment")
+def get_selected_region() -> str | None:
+    """Return the currently selected region from session state."""
+    return st.session_state.get("selected_region")
 
 
 def get_db_path() -> str | None:
-    """Return the DuckDB path (or HF sentinel) for the currently selected experiment."""
-    exp_name = get_selected_experiment()
-    if not exp_name:
+    """Return the DuckDB path (or HF sentinel) for the currently selected region."""
+    region = get_selected_region()
+    if not region:
         return None
-    experiments = discover_experiments()
-    db_path = experiments.get(exp_name)
+    regions = discover_regions()
+    db_path = regions.get(region)
     return str(db_path) if db_path else None
 
 
-def experiment_selector(sidebar: bool = True) -> str | None:
-    """Render an experiment selector widget. Returns selected experiment name."""
-    experiments = discover_experiments()
-    if not experiments:
-        st.warning("No experiments found. Run a pipeline first.")
+def region_selector(sidebar: bool = True) -> str | None:
+    """Render a region selector widget. Returns selected region name."""
+    regions = discover_regions()
+    if not regions:
+        st.warning("No pipeline outputs found. Run the pipeline for a region first.")
         return None
 
     container = st.sidebar if sidebar else st
     selected = container.selectbox(
-        "Experiment",
-        options=list(experiments.keys()),
-        key="selected_experiment",
-        help="Select which experiment pipeline's results to view",
+        "Region",
+        options=list(regions.keys()),
+        key="selected_region",
+        help="Select which region's pipeline results to view",
     )
     return selected
 
 
-def _setup_hf_views(conn: duckdb.DuckDBPyConnection, experiment: str, hf_repo: str) -> None:
+def clustering_method_selector(sidebar: bool = True) -> str:
+    """Render a clustering method selector widget. Returns selected method name."""
+    container = st.sidebar if sidebar else st
+    selected = container.selectbox(
+        "Clustering Method",
+        options=CLUSTERING_METHODS,
+        key="clustering_method",
+        help="Select which community detection method to visualize",
+    )
+    return selected
+
+
+def _setup_hf_views(conn: duckdb.DuckDBPyConnection, region: str, hf_repo: str) -> None:
     """Create schema+view aliases in an in-memory connection pointing to HF Parquet files."""
     conn.execute("INSTALL httpfs; LOAD httpfs;")
-    base = f"https://huggingface.co/datasets/{hf_repo}/resolve/main/{experiment}"
+    base = f"https://huggingface.co/datasets/{hf_repo}/resolve/main/{region}"
     for schema, table in HF_TABLES:
         url = f"{base}/{schema}_{table}.parquet"
         conn.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
@@ -120,16 +130,16 @@ def _setup_hf_views(conn: duckdb.DuckDBPyConnection, experiment: str, hf_repo: s
 
 @st.cache_resource
 def get_connection(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Return a DuckDB connection cached per path/experiment.
+    """Return a DuckDB connection cached per path/region.
 
     In HF mode (db_path starts with "hf://"), returns an in-memory connection
     with views pointing to Parquet files on HuggingFace. In local mode, returns
     a read-only connection to the .duckdb file.
     """
     if db_path.startswith("hf://"):
-        experiment = db_path[len("hf://"):]
+        region = db_path[len("hf://"):]
         conn = duckdb.connect()
-        _setup_hf_views(conn, experiment, _hf_repo())
+        _setup_hf_views(conn, region, _hf_repo())
         return conn
     return duckdb.connect(db_path, read_only=True)
 
@@ -142,20 +152,17 @@ def _query_df_cached(sql: str, db_path: str) -> pd.DataFrame:
 
 
 def query_df(sql: str) -> pd.DataFrame:
-    """Execute SQL against the currently selected experiment's DuckDB.
-
-    Works in both local and HF mode — callers use schema.table SQL unchanged.
-    """
+    """Execute SQL against the currently selected region's DuckDB."""
     path = get_db_path()
     if not path:
         return pd.DataFrame()
     return _query_df_cached(sql, path)
 
 
-def query_df_by_experiment(sql: str, exp_name: str) -> pd.DataFrame:
-    """Execute SQL against a specific experiment by name, bypassing session state."""
-    experiments = discover_experiments()
-    db_path = experiments.get(exp_name)
+def query_df_by_region(sql: str, region: str) -> pd.DataFrame:
+    """Execute SQL against a specific region by name, bypassing session state."""
+    regions = discover_regions()
+    db_path = regions.get(region)
     if not db_path:
         return pd.DataFrame()
     return _query_df_cached(sql, str(db_path))

@@ -11,24 +11,26 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from db import query_df, SET_COLORS, SET_LABELS, experiment_selector
+from db import query_df, SET_COLORS, SET_LABELS, region_selector, clustering_method_selector
 
 st.set_page_config(page_title="Community Explorer", layout="wide")
 
-selected = experiment_selector()
+selected = region_selector()
 if not selected:
     st.stop()
+method = clustering_method_selector()
 
 st.title("Community Explorer")
 st.markdown(
-    f"Exploring the community structure detected in the **{selected}** experiment "
+    f"Exploring the **{method}** community structure for region **{selected}** "
     "on the bipartite VC syndication network."
 )
 
 # --- Load data ---
-network_df = query_df("SELECT * FROM graph.network")
+network_df = query_df(f"SELECT * FROM graph.network WHERE clustering_method = '{method}'")
 edges_df = query_df(
-    "SELECT Source, Target, community, community_left, community_right, org_uuid FROM graph.edges"
+    f"SELECT Source, Target, community, community_left, community_right, org_uuid "
+    f"FROM graph.edges WHERE clustering_method = '{method}'"
 )
 
 # Community stats
@@ -201,7 +203,7 @@ with col_left:
 with col_right:
     st.markdown("**Top Nodes by Degree**")
     # Try to join nestedness data if available
-    nestedness_df = query_df("SELECT node, local_g_norm FROM experiment.johnson_nestedness")
+    nestedness_df = query_df(f"SELECT node, local_g_norm FROM experiment.johnson_nestedness WHERE clustering_method = '{method}'")
     top_nodes = degree_all.sort_values("degree", ascending=False).head(20).copy()
     top_nodes = top_nodes.merge(nestedness_df, on="node", how="left")
     top_nodes["set_label"] = top_nodes["set"].map(SET_LABELS)

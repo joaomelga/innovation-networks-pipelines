@@ -4,6 +4,7 @@ __pycache__/
 *.py[cod]
 
 *.duckdb
+outputs/
 .env
-
+.tmp
 .venv/

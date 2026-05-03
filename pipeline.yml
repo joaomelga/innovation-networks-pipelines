@@ -1,0 +1,7 @@
+name: innovation-networks-pipeline
+schedule: daily
+start_date: "2025-01-01"
+catchup: false
+
+default_connections:
+    duckdb: "duckdb-default"
