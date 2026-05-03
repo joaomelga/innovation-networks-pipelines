@@ -21,4 +21,5 @@ only-include = [
     "graph",
     "nestedness",
     "utils",
+    "complexity",
 ]

@@ -42,11 +42,12 @@ sys.path.insert(0, str(_ASSETS_DIR.parent))
 from _lib.config import duckdb_path
 from lib.graph.construction import build_bipartite_graph, get_bipartite_sets
 from lib.graph.registry import get_method
-import lib.graph.modularity  # register modularity
-import lib.graph.nestlon     # register nestlon
+import lib.graph.modularity      # register modularity
+import lib.graph.nestlon         # register nestlon
+import lib.graph.whole_network   # register whole_network
 
 DB_PATH = str(duckdb_path())
-ALL_METHODS = ["nestlon", "modularity"]
+ALL_METHODS = ["nestlon", "modularity", "whole_network"]
 
 
 def materialize():

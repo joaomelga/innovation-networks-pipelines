@@ -16,7 +16,7 @@ SET_1_COLOR = "#e74c3c"
 SET_COLORS = {0: SET_0_COLOR, 1: SET_1_COLOR}
 SET_LABELS = {0: "Late-stage (Set 0)", 1: "Early-stage (Set 1)"}
 
-CLUSTERING_METHODS = ["nestlon", "modularity"]
+CLUSTERING_METHODS = ["nestlon", "modularity", "whole_network"]
 
 # Tables exported to HF Datasets as {region}/{schema}_{table}.parquet
 HF_TABLES = [
@@ -32,6 +32,13 @@ HF_TABLES = [
     ("graph", "network"),
     ("graph", "edges"),
     ("experiment", "johnson_nestedness"),
+    ("experiment", "johnson_nestedness_temporal"),
+    ("experiment", "johnson_nestedness_weighted"),
+    ("experiment", "johnson_nestedness_weighted_temporal"),
+    ("experiment", "nodf_temporal"),
+    ("experiment", "wnodf_temporal"),
+    ("experiment", "spectral_radius_temporal"),
+    ("experiment", "eci_temporal"),
 ]
 
 
