@@ -9,9 +9,11 @@ depends:
   - staging.investments_funded
 
 description: |
-  Extract venture capital investments (investor_types contains 'venture'),
-  and create the composite investor name (investor_name + '-' + investment_type)
-  used as node identifiers in the bipartite network.
+  Extract venture capital investments (investor_types contains 'venture').
+  investor_node_name is an intermediate field carrying the round-type suffix
+  (investor_name + '-' + investment_type). Downstream, core.investment_pairs
+  overrides this with a binary stage label ('-late' / '-early') so each investor
+  appears at most once per bipartite side.
 
 columns:
   - name: investor_node_name
