@@ -52,7 +52,7 @@ def compute_community_nestedness(nodes_df, edges_df, comm_id):
     print(f"  Community {comm_id}: matrix {adj_filtered.shape[0]}x{adj_filtered.shape[1]}, "
           f"edges={int(adj_filtered.sum())}, density={adj_filtered.mean():.4f}")
 
-    calc = JohnsonNestednessCalculator(adj_filtered, bipartite=True)
+    calc = JohnsonNestednessCalculator(adj_filtered)
     result = calc.nestedness(return_local=True)
 
     left_filtered = left_nodes[row_mask]
